@@ -55,14 +55,16 @@
 #include "led.h"
 #include "mxc_pins.h"
 #include "spi.h"
+#include "tmr.h"
+#include "tmr_utils.h"
 
 /* **** Definitions **** */
 #define UART_BAUD           115200//1000000
 #define BUFF_SIZE           1500//512
 
-#define TEST_LEN           12000//(11000/2)
+#define TEST_LEN           14000//(11000/2)
 //#define TEST_LEN_BYTE      12000//120//(11000) //works for max 11KB
-#define CLOCK_RATE         100000 // Bit Rate
+#define CLOCK_RATE         1000000 // Bit Rate 1MHz
 #define bufferSize         TEST_LEN * 2 + 1
 
 #define TEST_SLAVE SPI1A
@@ -107,7 +109,7 @@ void read_cb(uart_req_t* req, int error)
 void write_cb(uart_req_t* req, int error)
 {
     write_flag = error;
-    printf("Write Callback called with error: %d\n", error);
+    //printf("Write Callback called with error: %d\n", error);
 }
 
 /* **************************************************************************** */
@@ -147,7 +149,7 @@ void sendCommand(int length,const char* cmd){
 		while(1) {}
 	}
 	else {
-		printf("Write Transaction has been set up.\n");
+	//	printf("Write Transaction has been set up.\n");
 	}
 
 //	error = UART_ReadAsync(MXC_UART_GET_UART(0), &read_req);
@@ -164,7 +166,7 @@ void sendCommand(int length,const char* cmd){
 	if (write_flag != 0) {
 		printf("Error with UART_WriteAsync callback\n");
 	} else {
-		printf("Write has been completed.\n");
+		//printf("Write has been completed.\n");
 	}
 //	while(read_flag == 1){
 //		if (count == 9600000){
@@ -185,11 +187,11 @@ void sendCommand(int length,const char* cmd){
 //	free(response);
 }
 
-void customWait(int s){
+void customWait(float s){
 	//mxc_delay_start(MXC_DELAY_SEC(s));
-
-	for(int i = 0; i< 9600000*s;i++){}
-	printf("done waiting\n");
+	TMR_Delay(MXC_TMR0,MSEC(s*1000),NULL);
+	//for(int i = 0; i< 960000*s;i++){}
+	//printf("done waiting\n");
 }
 
 
@@ -263,9 +265,9 @@ int main(void)
 
 	Console_Init();
 
-	printf("SPI Reception Complete.\n");
+//	printf("SPI Reception Complete.\n");
 	//printf("Slave data: %s \n", slave_rx_data);
-	printf("Length of Slave data: %d \n", sizeof(slave_rx_data)/sizeof(slave_rx_data[0]));
+//	printf("Length of Slave data: %d \n", sizeof(slave_rx_data)/sizeof(slave_rx_data[0]));
 
 	// Print the data
 
@@ -275,9 +277,9 @@ int main(void)
 	hex_to_string(slave_rx_data, TEST_LEN, hex_string);
 
 	// Print the hex string
-	printf("Slave data in hex: %s\n", hex_string);
+//	printf("Slave data in hex: %s\n", hex_string);
 
-	printf("Length of Slave data: %d \n", TEST_LEN);
+//	printf("Length of Slave data: %d \n", TEST_LEN);
 
 
 
@@ -290,7 +292,7 @@ int main(void)
     cfg.pol = UART_FLOW_POL_EN;
     cfg.baud = UART_BAUD;
 
-    printf("Enabling UART0A.\n");
+//    printf("Enabling UART0A.\n");
 
     error = UART_Init(MXC_UART_GET_UART(0), &cfg, &sys_uart_cfg);
 
@@ -326,32 +328,42 @@ int main(void)
 		customWait(2);
 	    //PDP Attach
 		sendCommand(12,"AT+CGATT=1\r\n");
-		customWait(2);
+		customWait(1);
 		//Configure APN
 		sendCommand(20,"AT+CSTT=\"hologram\"\r\n");
-		customWait(2);
+		customWait(1);
 		//CCR Connect
 		sendCommand(10,"AT+CIICR\r\n");
-		customWait(2);
+		customWait(1);
 		//Initialize IP
 		sendCommand(10,"AT+CIFSR\r\n");
-		customWait(2);
+		customWait(1);
 		//Sending To Google Cloud Server(8.8.8.8) remember to change IP and length of command
 		sendCommand(41,"AT+CIPSTART=\"UDP\",\"71.63.125.82\",\"8080\"\r\n");
-		customWait(5);
+		customWait(3.2);
 		//Send image via UDP
-		int chunks = bufferSize / 1460;
+		//int chunks = bufferSize / 1460;
+		int chunks = TEST_LEN / 1460;
+		chunks=chunks+1;
 		//int remainingBytes = bufferSize % 1460;
 
 		for (int chunk = 0; chunk < chunks; chunk++) {
 		     sendCommand(17, "AT+CIPSEND=1460\r\n");
 
 		     for (int i = 0; i < 1460; i++) {
-		      txdata[i] = hex_string[chunk * 1460 + i];
+		      //txdata[i] = hex_string[chunk * 1460 + i];
+		    	 if (chunk*1460 + i >= TEST_LEN){
+		    		 txdata[i] = 0;
+		    	 }
+		    	 else{
+		    	 txdata[i] = slave_rx_data[chunk * 1460 + i];
+		    	 }
 		        }
 
 		        sendCommand(1460, txdata);
-		        customWait(15);
+		        //customWait(15);
+		        customWait(3);
+		        printf("number of chunks%d",chunk);
 		    }
 //		sendCommand(17,"AT+CIPSEND=1460\r\n");
 //        for(int i =0;i<1460;i++){
