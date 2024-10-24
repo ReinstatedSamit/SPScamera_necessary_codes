@@ -124,7 +124,7 @@ int main(void)
         UART_FLOW_DISABLE,
     };
     int error;
-    uint8_t txdata[1016] = "AT+LPSEND=8:0:";
+    uint8_t txdata[462] = "AT+SEND=1:";
     uint8_t rxdata[BUFF_SIZE];
 
     // image is 3412 bytes
@@ -194,19 +194,19 @@ int main(void)
      }
 
 */
-	for (int i = 0; i < 2; i++) { // iterate through base 64 image
+	for (int i = 0; i < (3412*2/450+1); i++) { // iterate through base 64 image
 		//memset(rxdata, 0x0, BUFF_SIZE);
 
 
-		for(int j =0;j<1000;j++){
-			txdata[j+14] = hex_string[i*1000+j];
-			if ( hex_string[i*200+j] == '='){ // == is the end of a uart message
+		for(int j =0;j<450;j++){
+			txdata[j+10] = hex_string[i*450+j];
+			//if ( hex_string[i*200+j] == '='){ // == is the end of a uart message
 				//other  = is added in post processing
-				break;
-			}
+				//break;
+		//	}
 		}
-		txdata[1014] = '\r';
-		txdata[1015] = '\n';
+		txdata[460] = '\r';
+		txdata[461] = '\n';
 
 
         //suint16_t txdata[16]="AT+SEND=1:241F\r\n";
