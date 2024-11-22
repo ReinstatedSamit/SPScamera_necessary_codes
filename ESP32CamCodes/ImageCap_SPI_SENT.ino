@@ -169,10 +169,22 @@ for (int i = 0; i < bytesToPrint; i++) {
   SPI.writeBytes(fb->buf, fb->len); // Send image data
     // Transmit zeroes to pad the buffer to 10,000 bytes
   int padding_size = BUFFER_SIZE - fb->len;
+    // Add padding
+  int padding_size = BUFFER_SIZE - fb->len;
   if (padding_size > 0) {
+      uint8_t* padding = (uint8_t*)malloc(padding_size);
+      if (padding) {
+          memset(padding, 0, padding_size);
+          SPI.writeBytes(padding, padding_size);
+          free(padding);
+      } else {
+          Serial.println("Failed to allocate padding buffer.");
+      }
+  }
+  /*if (padding_size > 0) {
     uint8_t padding[padding_size] = {0}; // Create padding buffer with zeroes
     SPI.writeBytes(padding, padding_size); // Send padding data
-  }
+  }*/
   //delay(100);
   digitalWrite(SPI_CS, HIGH); // Deselect SPI device
   Serial.println("Transmitting finish");
