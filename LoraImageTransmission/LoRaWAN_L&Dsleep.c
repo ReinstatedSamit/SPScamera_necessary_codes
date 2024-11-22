@@ -277,7 +277,7 @@ int main(void)
       //  setTrigger(1);
 
         // Turn off the LED before entering low-power modes
-    LED_Off(1);
+    LED_Off(0);
 
     printf("\n\n***** UART Example *****\n");
     printf("\nConnect UART0A TX (P0.4) to UART0A RX (P0.5) for this example.\n\n");
