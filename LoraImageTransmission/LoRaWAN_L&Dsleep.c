@@ -44,6 +44,9 @@ volatile int write_flag;
 
 volatile int alarmed;
 
+
+volatile uint8_t cycle_count __attribute__((section(".retained_ram")));
+
 //volatile uint8_t cycle_count __attribute__((section(".data")));
 
 uint8_t slave_rx_data[TEST_LEN];
@@ -58,7 +61,25 @@ gpio_cfg_t toggle = {PORT_0, PIN_9, GPIO_FUNC_OUT, GPIO_PAD_NONE};
     printf("Cycle count incremented to: %u\n", cycle_count);
 }
 */
+void checkCycleCount(void) {
+    uint32_t reset_cause = MXC_GCR->rstr0;
 
+    printf("Reset cause: 0x%08X\n", reset_cause);
+
+    if (reset_cause == 0) {
+        printf("Power-On Reset detected. Initializing cycle count.\n");
+        cycle_count = 1; // Initialize cycle count
+    } else if (reset_cause & MXC_F_GCR_RSTR0_WDT) {
+        printf("Watchdog Reset detected. Resuming operation.\n");
+    } else if (reset_cause & MXC_F_GCR_RSTR0_SRST) {
+        printf("Software Reset detected. Resuming operation.\n");
+    } else if (reset_cause & MXC_F_GCR_RSTR0_SYSTEM) {
+        printf("System Reset detected. Resuming operation.\n");
+    } else {
+        printf("Unknown reset cause. Defaulting cycle count.\n");
+        cycle_count = 1;
+    }
+}
 
 void setTrigger(int waitForTrigger)
 {
@@ -240,6 +261,8 @@ int main(void)
 	        printf("First cycle initialized.\n");
 	    }
          */
+
+   checkCycleCount(); 
     const sys_cfg_uart_t sys_uart_cfg = {
         MAP_A,
         UART_FLOW_DISABLE,
@@ -373,6 +396,22 @@ int main(void)
 //    //240  = 	packet size
    int dignum=450;
    char txdata[dignum+10+2];
+   char picnumdata[13];
+
+   // Format the command string dynamically
+   int length = snprintf(picnumdata, sizeof(picnumdata), "AT+SEND=3:%d\r\n", cycle_count);
+   printf(picnumdata);
+   // Check if snprintf succeeded and the buffer size was sufficient
+   /*if (length < 0 || length >= sizeof(picnumdata)) {
+       printf("Error: Command string formatting failed or buffer size is insufficient.\n");
+       return -1;
+   } */
+
+   // Pass the constructed command to sendCommand
+   sendCommand(length, picnumdata);
+   customWait(10);
+
+	
    //int loop= (TEST_LEN/240)+1;
    int loop=((TEST_LEN*2)/450+1);
    //int loop= ((TEST_LEN*2)/240)+1;
@@ -407,6 +446,14 @@ int main(void)
     printf("Finish Sending Data");
 
 	GPIO_OutSet(&gpio_out);
+
+	// Check the reset cause
+	checkCycleCount();
+
+
+	    // Increment and display cycle count
+	cycle_count++;
+	printf("Cycle count incremented to: %u\n", cycle_count);
 
 	MXC_GCR->scon |= 0x4000;  // Disable SWD
 
